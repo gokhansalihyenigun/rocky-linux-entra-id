@@ -17,7 +17,7 @@ Bu template, Microsoft Entra ID (eski adıyla Azure AD) ile SSH giriş yapabilec
 ## Hızlı Başlangıç
 
 1. **Deploy to Azure** butonuna tıklayın ⬆️
-2. Resource group seçin veya oluşturun
+2. Resource group seçin veya oluşturun (Önerilen: `germanywestcentral`)
 3. VM adını ve kullanıcı adını girin
 4. SSH public key'inizi yapıştırın (opsiyonel)
 5. **Review + Create** → **Create**
@@ -68,6 +68,7 @@ az ssh vm -n YOUR_VM_NAME -g YOUR_RESOURCE_GROUP
 - **Managed Identity**: System-assigned
 - **Premium SSD**: Disk şifrelemesi destekli
 - **Network Security Group**: Minimal gerekli kurallar
+- **Public IP**: Standard SKU (Static)
 
 ## Maliyet Tahmini
 
@@ -120,7 +121,8 @@ az group delete --name YOUR_RESOURCE_GROUP --yes --no-wait
 - **Image**: `rockylinux-x86_64:9-base:latest`
 - **Extension**: `Microsoft.Azure.ActiveDirectory.AADSSHLoginForLinux`
 - **Storage**: Premium_LRS (SSD)
-- **Network**: Basic Public IP, Standard NSG
+- **Network**: Standard Public IP (Static), Standard NSG
+- **Recommended Region**: Germany West Central
 
 ## Kaynaklar
 

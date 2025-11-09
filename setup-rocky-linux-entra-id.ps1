@@ -5,11 +5,11 @@ Write-Host "Rocky Linux 9 VM with Entra ID Login kurulumu başlatılıyor..." -F
 
 # 1. Resource group oluştur
 Write-Host "`n1. Resource group oluşturuluyor..." -ForegroundColor Yellow
-az group create --name AzureADLinuxVM --location southcentralus
+az group create --name AzureADLinuxVM --location germanywestcentral
 
 # 2. Rocky Linux 9 görüntülerini listele (güncel URN'ları görmek için)
 Write-Host "`n2. Mevcut Rocky Linux 9 görüntüleri kontrol ediliyor..." -ForegroundColor Yellow
-az vm image list --location southcentralus --publisher resf --offer rockylinux-x86_64 --sku 9-base --all -o table
+az vm image list --location germanywestcentral --publisher resf --offer rockylinux-x86_64 --sku 9-base --all -o table
 
 # 3. Marketplace terms kabul et (gerekirse)
 Write-Host "`n3. Marketplace şartları kabul ediliyor..." -ForegroundColor Yellow

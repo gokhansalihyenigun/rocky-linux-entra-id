@@ -6,11 +6,11 @@ echo -e "\e[32mRocky Linux 9 VM with Entra ID Login kurulumu başlatılıyor...\
 
 # 1. Resource group oluştur
 echo -e "\e[33m\n1. Resource group oluşturuluyor...\e[0m"
-az group create --name AzureADLinuxVM --location southcentralus
+az group create --name AzureADLinuxVM --location germanywestcentral
 
 # 2. Rocky Linux 9 görüntülerini listele (güncel URN'ları görmek için)
 echo -e "\e[33m\n2. Mevcut Rocky Linux 9 görüntüleri kontrol ediliyor...\e[0m"
-az vm image list --location southcentralus --publisher resf --offer rockylinux-x86_64 --sku 9-base --all -o table
+az vm image list --location germanywestcentral --publisher resf --offer rockylinux-x86_64 --sku 9-base --all -o table
 
 # 3. Marketplace terms kabul et (gerekirse)
 echo -e "\e[33m\n3. Marketplace şartları kabul ediliyor...\e[0m"
