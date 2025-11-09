@@ -1,0 +1,55 @@
+---
+title: Rocky Linux 9 with Entra ID - System Architecture
+---
+flowchart TB
+    subgraph Azure["☁️ Microsoft Azure"]
+        subgraph RG["📦 Resource Group: RockyLinuxEntraID"]
+            subgraph Network["🌐 Virtual Network (10.0.0.0/16)"]
+                subgraph Subnet["Subnet (10.0.0.0/24)"]
+                    VM["🖥️ Rocky Linux 9 VM<br/>Standard_B2s<br/>2 vCPU, 4GB RAM"]
+                end
+                NSG["🔒 Network Security Group<br/>SSH: 22 (Allowed)"]
+                NIC["🔌 Network Interface"]
+            end
+            
+            PIP["🌍 Public IP Address<br/>Static (Standard SKU)<br/>135.220.44.69"]
+            Disk["💾 Premium SSD<br/>OS Disk: 30GB"]
+            
+            subgraph Monitoring["📊 Monitoring Stack"]
+                LAW["📈 Log Analytics Workspace<br/>30-day retention<br/>PerGB2018 pricing"]
+                DCR["📋 Data Collection Rule<br/>- Syslog (auth, sudo)<br/>- Performance counters"]
+            end
+        end
+        
+        subgraph EntraID["🔐 Microsoft Entra ID"]
+            Users["👥 Users & Groups"]
+            RBAC["🎫 RBAC Roles<br/>- VM Administrator Login<br/>- VM User Login"]
+            SignIn["📝 Sign-in Logs"]
+            Audit["📋 Audit Logs"]
+        end
+    end
+    
+    subgraph Extensions["🔌 VM Extensions"]
+        AAD["AADSSHLoginForLinux<br/>v1.0<br/>Certificate Auth"]
+        AMA["AzureMonitorLinuxAgent<br/>v1.25<br/>Data Collection"]
+    end
+    
+    Client["💻 User PC<br/>Azure CLI<br/>SSH Client"]
+    
+    Client -->|"1. az login"| EntraID
+    Client -->|"2. az ssh vm"| PIP
+    PIP --> NIC
+    NIC --> VM
+    VM -.->|"Installed"| Extensions
+    AAD -->|"Validates"| EntraID
+    AMA -->|"Sends logs"| LAW
+    DCR -->|"Routes data"| LAW
+    VM --> Disk
+    VM -.->|"Protected by"| NSG
+    RBAC -->|"Controls access"| VM
+    
+    style VM fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style EntraID fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style Monitoring fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style Extensions fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style Client fill:#fff9c4,stroke:#f57f17,stroke-width:2px

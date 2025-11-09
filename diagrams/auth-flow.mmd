@@ -1,0 +1,57 @@
+---
+title: Entra ID SSH Authentication Flow
+---
+sequenceDiagram
+    autonumber
+    actor User as 👤 User
+    participant CLI as 💻 Azure CLI
+    participant EntraID as 🔐 Entra ID
+    participant VM as 🖥️ Rocky Linux VM
+    participant Extension as 🔌 AAD Extension
+    participant Shell as 🐚 Shell
+    
+    User->>CLI: az ssh vm -n my-rocky-vm
+    Note over User,CLI: User initiates SSH connection
+    
+    CLI->>EntraID: Request SSH Certificate
+    Note over CLI,EntraID: Include user credentials
+    
+    EntraID->>EntraID: Validate User
+    Note over EntraID: - Check credentials<br/>- Verify MFA (if required)<br/>- Conditional Access policies
+    
+    alt Authentication Failed
+        EntraID--xCLI: ❌ Access Denied
+        CLI--xUser: Authentication failed
+    else Authentication Successful
+        EntraID->>CLI: ✅ SSH Certificate (1h validity)
+        Note over EntraID,CLI: Certificate includes:<br/>- Username<br/>- Expiry time<br/>- Azure signature
+        
+        CLI->>VM: SSH with Certificate
+        Note over CLI,VM: ssh user@domain.com@vm-ip
+        
+        VM->>Extension: Validate Certificate
+        Note over VM,Extension: Extension checks:<br/>- Certificate signature<br/>- Expiry time<br/>- User identity
+        
+        Extension->>EntraID: Check RBAC Permissions
+        Note over Extension,EntraID: Does user have<br/>VM Administrator/User role?
+        
+        alt No RBAC Permission
+            EntraID--xExtension: ❌ No Permission
+            Extension--xVM: Access Denied
+            VM--xUser: Permission denied
+        else Has RBAC Permission
+            EntraID->>Extension: ✅ Permission Granted
+            Note over EntraID,Extension: Role: VM Administrator Login<br/>or VM User Login
+            
+            Extension->>VM: Create/Authorize User
+            Note over Extension,VM: - Create local account<br/>- Set sudo (if admin)<br/>- Configure SSH
+            
+            VM->>Shell: Grant Shell Access
+            Shell->>User: 🎉 Connected!
+            Note over Shell,User: [user@domain.com@rocky-vm ~]$
+        end
+    end
+    
+    rect rgb(200, 250, 200)
+        Note over User,Shell: ✅ Authentication Complete<br/>User can now execute commands
+    end

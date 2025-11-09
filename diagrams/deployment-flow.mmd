@@ -1,0 +1,103 @@
+---
+title: Deployment Process Flow
+---
+flowchart TD
+    Start["🚀 Start Deployment"]
+    Click["👆 Click Deploy to Azure Button"]
+    Portal["🌐 Azure Portal Opens"]
+    
+    subgraph Input["📝 Input Parameters"]
+        RG["Resource Group Name"]
+        Region["Azure Region"]
+        VMName["VM Name"]
+        VMSize["VM Size"]
+        Auth["Authentication Type<br/>(SSH Key / Password)"]
+        Monitor["Enable Monitoring?"]
+    end
+    
+    subgraph Validation["✅ Validation Phase"]
+        ValidateTemplate["Validate ARM Template"]
+        CheckQuota["Check Azure Quotas"]
+        ValidateParams["Validate Parameters"]
+    end
+    
+    subgraph Resources["🏗️ Create Resources"]
+        CreateRG["Create Resource Group"]
+        CreateVNet["Create Virtual Network"]
+        CreateNSG["Create Network Security Group"]
+        CreatePIP["Create Public IP (Static)"]
+        CreateNIC["Create Network Interface"]
+        CreateDisk["Create OS Disk (Premium SSD)"]
+        CreateVM["Create VM<br/>Rocky Linux 9.6"]
+        
+        CreateRG --> CreateVNet
+        CreateVNet --> CreateNSG
+        CreateNSG --> CreatePIP
+        CreatePIP --> CreateNIC
+        CreateNIC --> CreateDisk
+        CreateDisk --> CreateVM
+    end
+    
+    subgraph Extensions["🔌 Install Extensions"]
+        InstallAAD["Install AADSSHLoginForLinux<br/>v1.0"]
+        ConfigureAAD["Configure Entra ID Integration"]
+        InstallAMA["Install AzureMonitorLinuxAgent<br/>v1.25"]
+        ConfigureAMA["Configure Monitoring"]
+    end
+    
+    subgraph Monitoring["📊 Setup Monitoring"]
+        CreateLAW["Create Log Analytics Workspace"]
+        CreateDCR["Create Data Collection Rule"]
+        AssociateDCR["Associate DCR with VM"]
+    end
+    
+    subgraph RBAC["🔐 RBAC Configuration"]
+        AssignRole["Assign RBAC Role<br/>VM Administrator Login<br/>or VM User Login"]
+        EnableMI["Enable System-Assigned<br/>Managed Identity"]
+    end
+    
+    Complete["✅ Deployment Complete"]
+    Output["📤 Outputs:<br/>- VM Name<br/>- Public IP<br/>- Resource Group<br/>- SSH Command"]
+    
+    Test["🧪 Test Connection"]
+    Success["🎉 Ready to Use!"]
+    
+    Start --> Click
+    Click --> Portal
+    Portal --> Input
+    Input --> Validation
+    
+    Validation -->|"Valid"| Resources
+    Validation -->|"Invalid"| Portal
+    
+    CreateVM --> Extensions
+    
+    Extensions --> InstallAAD
+    InstallAAD --> ConfigureAAD
+    ConfigureAAD --> InstallAMA
+    InstallAMA --> ConfigureAMA
+    
+    ConfigureAMA -->|"If enabled"| Monitoring
+    ConfigureAMA -->|"If disabled"| RBAC
+    
+    Monitoring --> CreateLAW
+    CreateLAW --> CreateDCR
+    CreateDCR --> AssociateDCR
+    AssociateDCR --> RBAC
+    
+    RBAC --> EnableMI
+    EnableMI --> AssignRole
+    AssignRole --> Complete
+    
+    Complete --> Output
+    Output --> Test
+    Test -->|"az ssh vm"| Success
+    
+    style Start fill:#4caf50,stroke:#2e7d32,color:#fff,stroke-width:3px
+    style Success fill:#4caf50,stroke:#2e7d32,color:#fff,stroke-width:3px
+    style Complete fill:#2196f3,stroke:#1565c0,color:#fff,stroke-width:2px
+    style Validation fill:#ff9800,stroke:#e65100,stroke-width:2px
+    style Resources fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style Extensions fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style Monitoring fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style RBAC fill:#fff3e0,stroke:#e65100,stroke-width:2px
