@@ -1,0 +1,36 @@
+{
+    "name": "rocky-linux-entra-id-template",
+    "version": "1.0.0",
+    "description": "Azure ARM template for deploying Rocky Linux 9 VM with Microsoft Entra ID SSH login capability",
+    "keywords": [
+        "azure",
+        "arm-template", 
+        "rocky-linux",
+        "entra-id",
+        "azure-ad",
+        "ssh",
+        "linux-vm",
+        "deployment"
+    ],
+    "author": "Azure Template Contributor",
+    "license": "MIT",
+    "homepage": "https://github.com/YOUR_USERNAME/rocky-linux-entra-id#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/YOUR_USERNAME/rocky-linux-entra-id.git"
+    },
+    "bugs": {
+        "url": "https://github.com/YOUR_USERNAME/rocky-linux-entra-id/issues"
+    },
+    "scripts": {
+        "validate": "az deployment group validate --resource-group test-rg --template-file azuredeploy.json --parameters @azuredeploy.parameters.json",
+        "deploy": "az deployment group create --resource-group test-rg --template-file azuredeploy.json --parameters @azuredeploy.parameters.json",
+        "clean": "az group delete --name test-rg --yes --no-wait"
+    },
+    "devDependencies": {
+        "@azure/arm-template": "^1.0.0"
+    },
+    "engines": {
+        "azure-cli": ">=2.40.0"
+    }
+}

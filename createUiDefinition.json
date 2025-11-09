@@ -1,0 +1,126 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler": "Microsoft.Azure.CreateUIDef",
+    "version": "0.1.2-preview",
+    "parameters": {
+        "basics": [
+            {
+                "name": "vmName",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Virtual Machine Name",
+                "defaultValue": "rocky-linux-vm",
+                "toolTip": "Name of the Rocky Linux virtual machine",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-z0-9A-Z-]{1,15}$",
+                    "validationMessage": "VM name must be 1-15 characters long and contain only letters, numbers, and hyphens."
+                }
+            },
+            {
+                "name": "adminUsername",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Admin Username",
+                "defaultValue": "azureuser",
+                "toolTip": "Username for the virtual machine admin account",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-z0-9A-Z]{1,20}$",
+                    "validationMessage": "Username must be 1-20 characters long and contain only letters and numbers."
+                }
+            },
+            {
+                "name": "authenticationType",
+                "type": "Microsoft.Common.DropDown",
+                "label": "Authentication Type",
+                "defaultValue": "SSH Public Key",
+                "toolTip": "Type of authentication for the virtual machine",
+                "constraints": {
+                    "allowedValues": [
+                        {
+                            "label": "SSH Public Key",
+                            "value": "sshPublicKey"
+                        },
+                        {
+                            "label": "Password",
+                            "value": "password"
+                        }
+                    ],
+                    "required": true
+                }
+            },
+            {
+                "name": "adminPasswordOrKey",
+                "type": "Microsoft.Compute.CredentialsCombo",
+                "label": {
+                    "authenticationType": "Authentication type",
+                    "password": "Password",
+                    "confirmPassword": "Confirm password",
+                    "sshPublicKey": "SSH public key"
+                },
+                "toolTip": {
+                    "authenticationType": "Type of authentication to use on the virtual machine",
+                    "password": "Password for the virtual machine",
+                    "sshPublicKey": "SSH public key for the virtual machine"
+                },
+                "constraints": {
+                    "required": true,
+                    "customPasswordRegex": "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{12,}$",
+                    "customValidationMessage": "Password must be at least 12 characters long and contain both letters and numbers"
+                },
+                "options": {
+                    "hideConfirmation": false,
+                    "hidePassword": false
+                },
+                "osPlatform": "Linux",
+                "visible": true
+            }
+        ],
+        "steps": [
+            {
+                "name": "vmConfig",
+                "label": "Virtual Machine Configuration",
+                "elements": [
+                    {
+                        "name": "vmSize",
+                        "type": "Microsoft.Compute.SizeSelector",
+                        "label": "VM Size",
+                        "toolTip": "Select the size of the virtual machine",
+                        "recommendedSizes": [
+                            "Standard_B2s",
+                            "Standard_B4ms",
+                            "Standard_D2s_v3"
+                        ],
+                        "constraints": {
+                            "allowedSizes": [
+                                "Standard_B1s",
+                                "Standard_B2s", 
+                                "Standard_B4ms",
+                                "Standard_D2s_v3",
+                                "Standard_D4s_v3"
+                            ]
+                        },
+                        "options": {
+                            "hideDiskTypeFilter": false
+                        },
+                        "osPlatform": "Linux",
+                        "imageReference": {
+                            "publisher": "resf",
+                            "offer": "rockylinux-x86_64",
+                            "sku": "9-base"
+                        },
+                        "count": 1,
+                        "visible": true
+                    }
+                ]
+            }
+        ],
+        "outputs": {
+            "location": "[location()]",
+            "vmName": "[basics('vmName')]",
+            "adminUsername": "[basics('adminUsername')]",
+            "authenticationType": "[basics('authenticationType')]",
+            "adminPasswordOrKey": "[if(equals(basics('authenticationType'), 'password'), basics('adminPasswordOrKey').password, basics('adminPasswordOrKey').sshPublicKey)]",
+            "vmSize": "[steps('vmConfig').vmSize]"
+        }
+    }
+}
