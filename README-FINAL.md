@@ -69,207 +69,178 @@ Bu proje, Azure'da **Rocky Linux 9** sanal makinesi oluşturur ve **Microsoft En
 
 ## 🏗️ Mimari
 
-### 📐 Sistem Mimarisi Diagramı
+### Sistem Mimarisi
 
-Tüm Azure kaynakları ve aralarındaki ilişkileri gösteren detaylı mimari:
-
-```mermaid
-flowchart TB
-    subgraph Azure["☁️ Microsoft Azure"]
-        subgraph RG["📦 Resource Group: RockyLinuxEntraID"]
-            subgraph Network["🌐 Virtual Network (10.0.0.0/16)"]
-                subgraph Subnet["Subnet (10.0.0.0/24)"]
-                    VM["🖥️ Rocky Linux 9 VM<br/>Standard_B2s<br/>2 vCPU, 4GB RAM"]
-                end
-                NSG["🔒 Network Security Group<br/>SSH: 22 (Allowed)"]
-                NIC["🔌 Network Interface"]
-            end
-            
-            PIP["🌍 Public IP Address<br/>Static (Standard SKU)<br/>135.220.44.69"]
-            Disk["💾 Premium SSD<br/>OS Disk: 30GB"]
-            
-            subgraph Monitoring["📊 Monitoring Stack"]
-                LAW["📈 Log Analytics Workspace<br/>30-day retention<br/>PerGB2018 pricing"]
-                DCR["📋 Data Collection Rule<br/>- Syslog (auth, sudo)<br/>- Performance counters"]
-            end
-        end
-        
-        subgraph EntraID["🔐 Microsoft Entra ID"]
-            Users["👥 Users & Groups"]
-            RBAC["🎫 RBAC Roles<br/>- VM Administrator Login<br/>- VM User Login"]
-            SignIn["📝 Sign-in Logs"]
-            Audit["📋 Audit Logs"]
-        end
-    end
-    
-    subgraph Extensions["🔌 VM Extensions"]
-        AAD["AADSSHLoginForLinux<br/>v1.0<br/>Certificate Auth"]
-        AMA["AzureMonitorLinuxAgent<br/>v1.25<br/>Data Collection"]
-    end
-    
-    Client["💻 User PC<br/>Azure CLI<br/>SSH Client"]
-    
-    Client -->|"1. az login"| EntraID
-    Client -->|"2. az ssh vm"| PIP
-    PIP --> NIC
-    NIC --> VM
-    VM -.->|"Installed"| Extensions
-    AAD -->|"Validates"| EntraID
-    AMA -->|"Sends logs"| LAW
-    DCR -->|"Routes data"| LAW
-    VM --> Disk
-    VM -.->|"Protected by"| NSG
-    RBAC -->|"Controls access"| VM
-    
-    style VM fill:#e1f5ff,stroke:#01579b,stroke-width:3px
-    style EntraID fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style Monitoring fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    style Extensions fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    style Client fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Azure Cloud                              │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │           Resource Group: RockyLinuxEntraID               │  │
+│  │                                                            │  │
+│  │  ┌─────────────────────────────────────────────────────┐ │  │
+│  │  │         Virtual Network (10.0.0.0/16)               │ │  │
+│  │  │                                                       │ │  │
+│  │  │  ┌────────────────────────────────────────────────┐ │ │  │
+│  │  │  │    Subnet (10.0.0.0/24)                        │ │ │  │
+│  │  │  │                                                  │ │ │  │
+│  │  │  │  ┌──────────────────────────────────────────┐  │ │ │  │
+│  │  │  │  │   Rocky Linux 9 VM                       │  │ │ │  │
+│  │  │  │  │                                            │  │ │ │  │
+│  │  │  │  │   📦 Extensions:                          │  │ │ │  │
+│  │  │  │  │   ├─ AADSSHLoginForLinux                 │  │ │ │  │
+│  │  │  │  │   └─ AzureMonitorLinuxAgent              │  │ │ │  │
+│  │  │  │  │                                            │  │ │ │  │
+│  │  │  │  │   🔒 Managed Identity: System-Assigned   │  │ │ │  │
+│  │  │  │  │   💾 OS Disk: Premium SSD (30GB)         │  │ │ │  │
+│  │  │  │  └──────────────────────────────────────────┘  │ │ │  │
+│  │  │  │            │                                    │ │ │  │
+│  │  │  │            │ Network Interface                 │ │ │  │
+│  │  │  └────────────┼────────────────────────────────────┘ │ │  │
+│  │  │               │                                      │ │  │
+│  │  └───────────────┼──────────────────────────────────────┘ │  │
+│  │                  │                                        │  │
+│  │      ┌───────────┴──────────┐     ┌─────────────────┐   │  │
+│  │      │ Public IP (Static)   │     │ Network NSG     │   │  │
+│  │      │ 135.220.44.69        │     │ SSH: 22 (Open)  │   │  │
+│  │      └──────────────────────┘     └─────────────────┘   │  │
+│  │                                                           │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  Log Analytics Workspace                           │ │  │
+│  │  │  - Syslog (auth, authpriv, sudo)                   │ │  │
+│  │  │  - Performance Counters (CPU, Memory, Disk)        │ │  │
+│  │  │  - 30-day retention                                 │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  │                                                           │  │
+│  │  ┌────────────────────────────────────────────────────┐ │  │
+│  │  │  Data Collection Rule (DCR)                        │ │  │
+│  │  │  - Defines what logs to collect                    │ │  │
+│  │  │  - Routes data to Log Analytics                    │ │  │
+│  │  └────────────────────────────────────────────────────┘ │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │           Microsoft Entra ID (Azure AD)                  │  │
+│  │  - User Authentication                                    │  │
+│  │  - Role-Based Access Control (RBAC)                      │  │
+│  │  - Sign-in Logs                                           │  │
+│  │  - Audit Logs                                             │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-> 💡 **Not**: Diagram'ı tam ekranda görmek için GitHub'da dosyayı açın veya [diagrams/architecture.mmd](./diagrams/architecture.mmd) dosyasına bakın.
+### Entra ID SSH Authentication Akışı
 
-### 🔐 Entra ID SSH Authentication Akışı
-
-Kullanıcı authentication sürecini adım adım gösteren sequence diagram:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 User
-    participant CLI as 💻 Azure CLI
-    participant EntraID as 🔐 Entra ID
-    participant VM as 🖥️ Rocky Linux VM
-    participant Extension as 🔌 AAD Extension
-    participant Shell as 🐚 Shell
-    
-    User->>CLI: az ssh vm -n my-rocky-vm
-    Note over User,CLI: User initiates SSH connection
-    
-    CLI->>EntraID: Request SSH Certificate
-    Note over CLI,EntraID: Include user credentials
-    
-    EntraID->>EntraID: Validate User
-    Note over EntraID: - Check credentials<br/>- Verify MFA (if required)<br/>- Conditional Access policies
-    
-    alt Authentication Failed
-        EntraID--xCLI: ❌ Access Denied
-        CLI--xUser: Authentication failed
-    else Authentication Successful
-        EntraID->>CLI: ✅ SSH Certificate (1h validity)
-        Note over EntraID,CLI: Certificate includes:<br/>- Username<br/>- Expiry time<br/>- Azure signature
-        
-        CLI->>VM: SSH with Certificate
-        Note over CLI,VM: ssh user@domain.com@vm-ip
-        
-        VM->>Extension: Validate Certificate
-        Note over VM,Extension: Extension checks:<br/>- Certificate signature<br/>- Expiry time<br/>- User identity
-        
-        Extension->>EntraID: Check RBAC Permissions
-        Note over Extension,EntraID: Does user have<br/>VM Administrator/User role?
-        
-        alt No RBAC Permission
-            EntraID--xExtension: ❌ No Permission
-            Extension--xVM: Access Denied
-            VM--xUser: Permission denied
-        else Has RBAC Permission
-            EntraID->>Extension: ✅ Permission Granted
-            Note over EntraID,Extension: Role: VM Administrator Login<br/>or VM User Login
-            
-            Extension->>VM: Create/Authorize User
-            Note over Extension,VM: - Create local account<br/>- Set sudo (if admin)<br/>- Configure SSH
-            
-            VM->>Shell: Grant Shell Access
-            Shell->>User: 🎉 Connected!
-            Note over Shell,User: [user@domain.com@rocky-vm ~]$
-        end
-    end
-    
-    rect rgb(200, 250, 200)
-        Note over User,Shell: ✅ Authentication Complete<br/>User can now execute commands
-    end
+```
+┌─────────────┐                                    ┌──────────────┐
+│   User PC   │                                    │  Azure VM    │
+│             │                                    │ Rocky Linux  │
+└──────┬──────┘                                    └──────┬───────┘
+       │                                                  │
+       │  1. az ssh vm -n myVM -g myRG                   │
+       ├─────────────────────────────────────┐           │
+       │                                     │           │
+       │                      ┌──────────────▼────────┐  │
+       │                      │  Azure CLI            │  │
+       │                      │  - Checks auth        │  │
+       │                      └──────────┬────────────┘  │
+       │                                 │               │
+       │                    2. Request SSH Certificate   │
+       │                                 │               │
+       │                      ┌──────────▼────────────┐  │
+       │                      │  Microsoft Entra ID   │  │
+       │                      │  - Validates user     │  │
+       │                      │  - Checks MFA         │  │
+       │                      │  - Issues certificate │  │
+       │                      └──────────┬────────────┘  │
+       │                                 │               │
+       │              3. Temporary SSH Certificate       │
+       │  ◄──────────────────────────────┘               │
+       │                                                 │
+       │  4. SSH with Certificate                        │
+       ├─────────────────────────────────────────────────►
+       │                                                 │
+       │                                  ┌──────────────▼─────┐
+       │                                  │ AADSSHLoginForLinux│
+       │                                  │ Extension          │
+       │                                  │ - Validates cert   │
+       │                                  │ - Checks RBAC      │
+       │                                  └──────────┬─────────┘
+       │                                             │
+       │  5. Check RBAC Permissions                 │
+       │                      ┌─────────────────────▼────┐
+       │                      │  Azure RBAC              │
+       │                      │  VM Administrator Login  │
+       │                      │  or VM User Login        │
+       │                      └─────────────────────┬────┘
+       │                                            │
+       │                      6. Grant/Deny Access  │
+       │  ◄─────────────────────────────────────────┘
+       │                                                 │
+       │  7. Shell Access                                │
+       ├─────────────────────────────────────────────────►
+       │                                                 │
+       │  [user@domain.com@rocky-vm ~]$                 │
+       │                                                 │
 ```
 
-> 📊 **Interaktif Diagram**: [diagrams/auth-flow.mmd](./diagrams/auth-flow.mmd) dosyasını GitHub'da açarak daha detaylı görünüm elde edebilirsiniz.
+### Monitoring & Logging Akışı
 
-### 📊 Monitoring & Logging Akışı
-
-Log ve metric'lerin nasıl toplandığını ve işlendiğini gösteren data flow diagram:
-
-```mermaid
-flowchart LR
-    subgraph VM["🖥️ Rocky Linux VM"]
-        subgraph Logs["📝 System Logs"]
-            Syslog["📄 /var/log/secure<br/>SSH, sudo, auth"]
-            Messages["📄 /var/log/messages<br/>System events"]
-            Journal["📄 journalctl<br/>Systemd logs"]
-        end
-        
-        subgraph Metrics["📊 System Metrics"]
-            CPU["🔥 CPU Usage<br/>% Processor Time"]
-            Memory["🧠 Memory<br/>Available MB"]
-            Disk["💾 Disk<br/>Used Space %"]
-            Network["🌐 Network<br/>Traffic bytes/sec"]
-        end
-    end
-    
-    subgraph AMA["🔌 Azure Monitor Agent"]
-        Collector["📦 Data Collector<br/>Collects from:<br/>- Syslog<br/>- Performance counters<br/>- Custom logs"]
-        Processor["⚙️ Data Processor<br/>- Filters<br/>- Transforms<br/>- Batches"]
-    end
-    
-    subgraph Azure["☁️ Azure Cloud"]
-        subgraph DCR["📋 Data Collection Rule"]
-            Rules["📐 Collection Rules<br/>- Syslog facilities<br/>- Performance counters<br/>- Sampling rate: 60s"]
-        end
-        
-        subgraph LAW["📈 Log Analytics Workspace"]
-            subgraph Tables["📊 Data Tables"]
-                SyslogTable["Syslog Table<br/>- SSH logins<br/>- Sudo commands<br/>- Auth events"]
-                PerfTable["Perf Table<br/>- CPU metrics<br/>- Memory metrics<br/>- Disk metrics"]
-            end
-            
-            Retention["⏱️ 30-day Retention<br/>PerGB2018 pricing"]
-        end
-        
-        subgraph Analysis["🔍 Analysis & Alerting"]
-            KQL["� KQL Queries<br/>Kusto Query Language"]
-            Dashboard["📊 Dashboards<br/>Visual insights"]
-            Alerts["🚨 Alerts<br/>Email/SMS/Webhook"]
-        end
-    end
-    
-    User["👤 Administrator"]
-    
-    Logs --> Collector
-    Metrics --> Collector
-    Messages --> Collector
-    Journal --> Collector
-    
-    Collector --> Processor
-    Processor -->|"HTTPS/TLS"| Rules
-    Rules -->|"Routes data"| Tables
-    
-    SyslogTable --> Retention
-    PerfTable --> Retention
-    
-    Retention --> KQL
-    KQL --> Dashboard
-    KQL --> Alerts
-    
-    User -->|"View & Query"| Dashboard
-    User -->|"Write queries"| KQL
-    Alerts -->|"Notify"| User
-    
-    style VM fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    style AMA fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    style DCR fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style LAW fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    style Analysis fill:#fff9c4,stroke:#f57f17,stroke-width:2px
 ```
-
-> 🔍 **Detaylı İnceleme**: [diagrams/monitoring-flow.mmd](./diagrams/monitoring-flow.mmd) - Monitoring mimarisinin tüm detayları
+┌──────────────────────────────────────────────────────────────┐
+│                        Rocky Linux VM                        │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  System Events & Logs                                  │ │
+│  │  ├─ /var/log/secure      (SSH, sudo, auth)            │ │
+│  │  ├─ /var/log/messages    (System)                     │ │
+│  │  ├─ journalctl           (Systemd)                    │ │
+│  │  └─ Performance metrics  (CPU, Memory, Disk)          │ │
+│  └────────────────────────┬───────────────────────────────┘ │
+│                           │                                 │
+│  ┌────────────────────────▼───────────────────────────────┐ │
+│  │  Azure Monitor Agent (AMA)                             │ │
+│  │  - Collects syslog                                     │ │
+│  │  - Collects perf counters                              │ │
+│  │  - Sends to Log Analytics                              │ │
+│  └────────────────────────┬───────────────────────────────┘ │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+                            │ Secure Transfer
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│               Log Analytics Workspace                        │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Syslog Table                                          │ │
+│  │  - SSH login attempts (success/failed)                 │ │
+│  │  - Sudo command execution                              │ │
+│  │  - Authentication events                               │ │
+│  │  - Security events                                     │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Performance Table                                     │ │
+│  │  - CPU usage                                           │ │
+│  │  - Memory usage                                        │ │
+│  │  - Disk usage                                          │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  📊 Query with KQL (Kusto Query Language)                   │
+│  📈 Create dashboards & workbooks                           │
+│  🚨 Set up alerts                                           │
+└──────────────────────────────────────────────────────────────┘
+                            │
+                            │ Query & Visualize
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                   Azure Portal / CLI                         │
+│  - Run KQL queries                                          │
+│  - View dashboards                                          │
+│  - Check alerts                                             │
+│  - Download logs                                            │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ---
 
