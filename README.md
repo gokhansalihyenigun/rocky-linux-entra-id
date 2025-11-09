@@ -1,142 +1,141 @@
-# Rocky Linux 9 - Azure Entra ID Login Kurulum Dokümantasyonu
+# Rocky Linux 9 VM with Microsoft Entra ID SSH Login
 
-## Genel Bakış
-Bu doküman, Azure'da Rocky Linux 9 VM oluşturup Microsoft Entra ID (eski adıyla Azure AD) ile SSH giriş yapmayı açıklar.
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgokhansalihyenigun%2Frocky-linux-entra-id%2Fmaster%2Fazuredeploy.json)
+[![Deploy to Azure US Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgokhansalihyenigun%2Frocky-linux-entra-id%2Fmaster%2Fazuredeploy.json)
+[![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2Fgokhansalihyenigun%2Frocky-linux-entra-id%2Fmaster%2Fazuredeploy.json)
 
-## Önemli Güncellemeler (Kasım 2025)
-- ✅ Rocky Linux publisher artık **resf** (Red Hat Enterprise Linux clone projects)
-- ✅ Rocky Linux 8 ve 9, Microsoft Entra ID için resmi olarak destekleniyor
-- ✅ URN formatı: `resf:rockylinux-x86_64:9-base:latest`
+Bu template, Microsoft Entra ID (eski adıyla Azure AD) ile SSH giriş yapabileceğiniz Rocky Linux 9 sanal makinesini Azure'da oluşturur.
 
-## Adım Adım Kurulum
+## Özellikler
 
-### 1. Resource Group Oluştur
+✅ **Rocky Linux 9** - En güncel RHEL compatible dağıtım  
+✅ **Microsoft Entra ID SSH Login** - Şifresiz, güvenli giriş  
+✅ **Managed Identity** - Azure kaynaklarına güvenli erişim  
+✅ **Premium SSD** - Yüksek performans disk  
+✅ **Otomatik SSH Key** - Manuel key yönetimi yok  
+
+## Hızlı Başlangıç
+
+1. **Deploy to Azure** butonuna tıklayın ⬆️
+2. Resource group seçin veya oluşturun
+3. VM adını ve kullanıcı adını girin
+4. SSH public key'inizi yapıştırın (opsiyonel)
+5. **Review + Create** → **Create**
+
+## Deployment Sonrası
+
+VM oluştuktan sonra (yaklaşık 5-10 dakika):
+
+### 1. RBAC Rol Ataması Yapın
 ```bash
-az group create --name AzureADLinuxVM --location southcentralus
+# Mevcut kullanıcınıza admin rolü atayın
+az role assignment create \
+    --role "Virtual Machine Administrator Login" \
+    --assignee $(az account show --query user.name -o tsv) \
+    --scope $(az vm show -g YOUR_RESOURCE_GROUP -n YOUR_VM_NAME --query id -o tsv)
 ```
 
-### 2. Mevcut Rocky Linux 9 Görüntülerini Kontrol Et
+### 2. VM'e Bağlanın
 ```bash
-az vm image list --location southcentralus --publisher resf --offer rockylinux-x86_64 --sku 9-base --all -o table
-```
-Bu komut güncel URN listesini verir. Format: `publisher:offer:sku:version`
-
-### 3. Marketplace Şartlarını Kabul Et (Gerekirse)
-```bash
-az vm image terms accept --urn resf:rockylinux-x86_64:9-base:latest
-```
-Bazı subscription'larda bu adım zorunludur.
-
-### 4. VM Oluştur
-```bash
-az vm create \
-    --resource-group AzureADLinuxVM \
-    --name myRockyLinuxVM \
-    --image resf:rockylinux-x86_64:9-base:latest \
-    --assign-identity \
-    --admin-username azureuser \
-    --generate-ssh-keys \
-    --size Standard_B2s \
-    --authentication-type ssh \
-    --storage-sku Premium_LRS
+# Azure CLI ile Entra ID üzerinden bağlanın
+az ssh vm -n YOUR_VM_NAME -g YOUR_RESOURCE_GROUP
 ```
 
-**Önemli Parametreler:**
-- `--assign-identity`: Managed Identity etkinleştirir
-- `--generate-ssh-keys`: SSH key çiftini otomatik oluşturur
-- `--size Standard_B2s`: Küçük-orta iş yükleri için uygun
-- `--storage-sku Premium_LRS`: SSD disk performansı
+## Parametreler
 
-### 5. Microsoft Entra ID SSH Extension'ını Kur
-```bash
-az vm extension set \
-    --publisher Microsoft.Azure.ActiveDirectory \
-    --name AADSSHLoginForLinux \
-    --resource-group AzureADLinuxVM \
-    --vm-name myRockyLinuxVM
-```
-Bu extension:
-- `aadsshlogin` paketlerini kurar
-- Entra ID ile SSH sertifika tabanlı auth'u etkinleştirir
-- OpenSSH'ı Entra ID ile entegre eder
+| Parametre | Açıklama | Varsayılan |
+|-----------|----------|------------|
+| `vmName` | Sanal makine adı | `rocky-linux-vm` |
+| `adminUsername` | Yönetici kullanıcı adı | `azureuser` |
+| `vmSize` | VM boyutu | `Standard_B2s` |
+| `authenticationType` | Kimlik doğrulama türü | `sshPublicKey` |
+| `adminPasswordOrKey` | SSH key veya şifre | *Required* |
 
-### 6. RBAC Rol Ataması Yap
-```bash
-username=$(az account show --query user.name -o tsv)
-vmid=$(az vm show -g AzureADLinuxVM -n myRockyLinuxVM --query id -o tsv)
+## VM Boyutları
 
-# Tam yönetici erişimi
-az role assignment create --role "Virtual Machine Administrator Login" --assignee "$username" --scope "$vmid"
+| Boyut | vCPU | RAM | Kullanım |
+|-------|------|-----|----------|
+| `Standard_B1s` | 1 | 1 GB | Test/Dev |
+| `Standard_B2s` | 2 | 4 GB | Küçük iş yükleri |
+| `Standard_B4ms` | 4 | 16 GB | Orta iş yükleri |
+| `Standard_D2s_v3` | 2 | 8 GB | Genel amaçlı |
+| `Standard_D4s_v3` | 4 | 16 GB | Performans odaklı |
 
-# VEYA sadece kullanıcı erişimi (sudo yok)
-# az role assignment create --role "Virtual Machine User Login" --assignee "$username" --scope "$vmid"
-```
+## Güvenlik
 
-**Rol Farkları:**
-- **Virtual Machine Administrator Login**: sudo erişimi var
-- **Virtual Machine User Login**: normal kullanıcı, sudo yok
+- **SSH (Port 22)**: Varsayılan olarak açık
+- **Entra ID Authentication**: Certificate-based auth
+- **Managed Identity**: System-assigned
+- **Premium SSD**: Disk şifrelemesi destekli
+- **Network Security Group**: Minimal gerekli kurallar
 
-## VM'e Bağlanma
+## Maliyet Tahmini
 
-### 1. Azure'a Giriş Yap
-```bash
-az login
-```
+| VM Boyutu | Aylık Tahmini Maliyet (USD) |
+|-----------|----------------------------|
+| Standard_B1s | ~$7-10 |
+| Standard_B2s | ~$15-25 |
+| Standard_B4ms | ~$60-80 |
+| Standard_D2s_v3 | ~$70-90 |
 
-### 2. SSH ile Bağlan
-```bash
-az ssh vm -n myRockyLinuxVM -g AzureADLinuxVM
-```
-
-Bu komut:
-- Otomatik olarak Entra ID token'ı alır
-- OpenSSH certificate-based authentication kullanır
-- Geleneksel SSH key'e gerek yok
+*Maliyetler bölgeye göre değişir. Kullanım tabanlı faturalandırma.*
 
 ## Sorun Giderme
 
-### Extension Durumu Kontrol Et
+### SSH Bağlantı Sorunu
 ```bash
-az vm extension show --resource-group AzureADLinuxVM --vm-name myRockyLinuxVM --name AADSSHLoginForLinux
+# Extension durumunu kontrol edin
+az vm extension show -g YOUR_RG -n YOUR_VM --name AADSSHLoginForLinux
+
+# VM durumunu kontrol edin  
+az vm show -g YOUR_RG -n YOUR_VM --show-details
+
+# Debug modunda bağlanmayı deneyin
+az ssh vm -n YOUR_VM -g YOUR_RG -- -v
 ```
 
-### VM Durumu Kontrol Et
+### RBAC Sorunu
 ```bash
-az vm show -g AzureADLinuxVM -n myRockyLinuxVM --show-details
+# Rol atamalarınızı kontrol edin
+az role assignment list --assignee $(az account show --query user.name -o tsv) --scope $(az vm show -g YOUR_RG -n YOUR_VM --query id -o tsv)
 ```
 
-### SSH Debug Modu
+### Extension Kurulum Sorunu
 ```bash
-az ssh vm -n myRockyLinuxVM -g AzureADLinuxVM -- -v
+# Extension'ı yeniden kur
+az vm extension delete -g YOUR_RG --vm-name YOUR_VM -n AADSSHLoginForLinux
+az vm extension set --publisher Microsoft.Azure.ActiveDirectory --name AADSSHLoginForLinux -g YOUR_RG --vm-name YOUR_VM
 ```
 
-### Rol Atamalarını Kontrol Et
+## Kaynakları Temizleme
+
 ```bash
-az role assignment list --scope "$vmid" --assignee "$username" -o table
+# Resource group'u silme (tüm kaynaklar silinir)
+az group delete --name YOUR_RESOURCE_GROUP --yes --no-wait
 ```
 
-## Güvenlik Notları
+## Teknik Detaylar
 
-1. **Network Security Group**: Varsayılan olarak SSH (22) portu açılır
-2. **SSH Keys**: Otomatik oluşturulan key'ler `~/.ssh/` dizininde saklanır
-3. **Managed Identity**: VM'in Azure kaynaklarına erişimi için kullanılır
-4. **Certificate-based Auth**: Geleneksel password/key auth yerine sertifika kullanılır
-
-## Maliyet Optimizasyonu
-
-- `Standard_B2s`: 2 vCPU, 4 GB RAM - küçük iş yükleri için
-- `Standard_B1s`: 1 vCPU, 1 GB RAM - test ortamları için
-- VM'i kullanmadığınızda durdurun: `az vm deallocate`
+- **Publisher**: `resf` (Red Hat Enterprise Linux clone projects)
+- **Image**: `rockylinux-x86_64:9-base:latest`
+- **Extension**: `Microsoft.Azure.ActiveDirectory.AADSSHLoginForLinux`
+- **Storage**: Premium_LRS (SSD)
+- **Network**: Basic Public IP, Standard NSG
 
 ## Kaynaklar
 
-- [Microsoft Learn - Linux VM Entra ID Login](https://learn.microsoft.com/en-us/entra/identity/devices/howto-vm-sign-in-azure-ad-linux)
-- [Rocky Linux Azure Images Documentation](https://docs.rockylinux.org/10/guides/cloud/migration-to-new-azure-images/)
-- [Azure VM Image Terms](https://learn.microsoft.com/en-us/cli/azure/vm/image/terms)
+- [Microsoft Learn - Entra ID Linux VM Login](https://learn.microsoft.com/en-us/entra/identity/devices/howto-vm-sign-in-azure-ad-linux)
+- [Rocky Linux Resmi Dokümantasyonu](https://docs.rockylinux.org/)
+- [Azure VM Fiyatlandırması](https://azure.microsoft.com/pricing/details/virtual-machines/linux/)
 
-## Temizlik
+## Katkıda Bulunma
 
-Kaynakları silmek için:
-```bash
-az group delete --name AzureADLinuxVM --yes --no-wait
-```
+Issues ve pull request'ler memnuniyetle karşılanır! 🚀
+
+## Lisans
+
+MIT License - detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+---
+
+**⚡ Tek tıkla deploy edin!** ⬆️ Yukarıdaki **Deploy to Azure** butonuna tıklayın.

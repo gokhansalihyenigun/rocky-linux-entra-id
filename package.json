@@ -14,13 +14,13 @@
     ],
     "author": "Azure Template Contributor",
     "license": "MIT",
-    "homepage": "https://github.com/YOUR_USERNAME/rocky-linux-entra-id#readme",
+    "homepage": "https://github.com/gokhansalihyenigun/rocky-linux-entra-id#readme",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/YOUR_USERNAME/rocky-linux-entra-id.git"
+        "url": "git+https://github.com/gokhansalihyenigun/rocky-linux-entra-id.git"
     },
     "bugs": {
-        "url": "https://github.com/YOUR_USERNAME/rocky-linux-entra-id/issues"
+        "url": "https://github.com/gokhansalihyenigun/rocky-linux-entra-id/issues"
     },
     "scripts": {
         "validate": "az deployment group validate --resource-group test-rg --template-file azuredeploy.json --parameters @azuredeploy.parameters.json",
