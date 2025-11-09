@@ -271,7 +271,7 @@
             "condition": "[parameters('enableMonitoring')]",
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "apiVersion": "2021-03-01",
-            "name": "[concat(parameters('vmName'), '/OMSExtension')]",
+            "name": "[concat(parameters('vmName'), '/AzureMonitorLinuxAgent')]",
             "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
@@ -279,35 +279,106 @@
                 "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
             ],
             "properties": {
-                "publisher": "Microsoft.EnterpriseCloud.Monitoring",
-                "type": "OmsAgentForLinux",
-                "typeHandlerVersion": "1.13",
+                "publisher": "Microsoft.Azure.Monitor",
+                "type": "AzureMonitorLinuxAgent",
+                "typeHandlerVersion": "1.25",
                 "autoUpgradeMinorVersion": true,
-                "settings": {
-                    "workspaceId": "[if(parameters('enableMonitoring'), reference(variables('workspaceId'), '2021-06-01').customerId, '')]"
-                },
-                "protectedSettings": {
-                    "workspaceKey": "[if(parameters('enableMonitoring'), listKeys(variables('workspaceId'), '2021-06-01').primarySharedKey, '')]"
-                }
+                "enableAutomaticUpgrade": true
             }
         },
         {
             "condition": "[parameters('enableMonitoring')]",
-            "type": "Microsoft.Compute/virtualMachines/extensions",
-            "apiVersion": "2021-03-01",
-            "name": "[concat(parameters('vmName'), '/DependencyAgent')]",
+            "type": "Microsoft.Insights/dataCollectionRules",
+            "apiVersion": "2021-09-01-preview",
+            "name": "[concat('dcr-', parameters('vmName'))]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
-                "[resourceId('Microsoft.Compute/virtualMachines/extensions', parameters('vmName'), 'OMSExtension')]"
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
             ],
             "properties": {
-                "publisher": "Microsoft.Azure.Monitoring.DependencyAgent",
-                "type": "DependencyAgentLinux",
-                "typeHandlerVersion": "9.10",
-                "autoUpgradeMinorVersion": true,
-                "settings": {},
-                "protectedSettings": {}
+                "dataSources": {
+                    "syslog": [
+                        {
+                            "name": "syslogDataSource",
+                            "streams": [
+                                "Microsoft-Syslog"
+                            ],
+                            "facilityNames": [
+                                "auth",
+                                "authpriv",
+                                "cron",
+                                "daemon",
+                                "kern",
+                                "syslog"
+                            ],
+                            "logLevels": [
+                                "Debug",
+                                "Info",
+                                "Notice",
+                                "Warning",
+                                "Error",
+                                "Critical",
+                                "Alert",
+                                "Emergency"
+                            ]
+                        }
+                    ],
+                    "performanceCounters": [
+                        {
+                            "name": "perfCounterDataSource",
+                            "streams": [
+                                "Microsoft-Perf"
+                            ],
+                            "samplingFrequencyInSeconds": 60,
+                            "counterSpecifiers": [
+                                "Processor(*)\\% Processor Time",
+                                "Memory(*)\\Available MBytes",
+                                "Disk(*)\\% Used Space"
+                            ]
+                        }
+                    ]
+                },
+                "destinations": {
+                    "logAnalytics": [
+                        {
+                            "workspaceResourceId": "[variables('workspaceId')]",
+                            "name": "lawDestination"
+                        }
+                    ]
+                },
+                "dataFlows": [
+                    {
+                        "streams": [
+                            "Microsoft-Syslog"
+                        ],
+                        "destinations": [
+                            "lawDestination"
+                        ]
+                    },
+                    {
+                        "streams": [
+                            "Microsoft-Perf"
+                        ],
+                        "destinations": [
+                            "lawDestination"
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "condition": "[parameters('enableMonitoring')]",
+            "type": "Microsoft.Insights/dataCollectionRuleAssociations",
+            "apiVersion": "2021-09-01-preview",
+            "name": "[concat('dcra-', parameters('vmName'))]",
+            "scope": "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+                "[resourceId('Microsoft.Insights/dataCollectionRules', concat('dcr-', parameters('vmName')))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', parameters('vmName'), 'AzureMonitorLinuxAgent')]"
+            ],
+            "properties": {
+                "dataCollectionRuleId": "[resourceId('Microsoft.Insights/dataCollectionRules', concat('dcr-', parameters('vmName')))]"
             }
         }
     ],
