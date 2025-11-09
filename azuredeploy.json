@@ -275,6 +275,7 @@
             "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', parameters('vmName'), 'AADSSHLoginForLinux')]",
                 "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
             ],
             "properties": {
