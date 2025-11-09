@@ -57,6 +57,20 @@
             "metadata": {
                 "description": "SSH Key or password for the Virtual Machine"
             }
+        },
+        "enableMonitoring": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Enable Azure Monitor and Log Analytics for comprehensive logging and monitoring"
+            }
+        },
+        "workspaceName": {
+            "type": "string",
+            "defaultValue": "[concat('law-', parameters('vmName'))]",
+            "metadata": {
+                "description": "Name of the Log Analytics workspace"
+            }
         }
     },
     "variables": {
@@ -72,6 +86,7 @@
         "publicIPAddressName": "[concat(parameters('vmName'), '-pip')]",
         "networkInterfaceName": "[concat(parameters('vmName'), '-nic')]",
         "osDiskName": "[concat(parameters('vmName'), '-osdisk')]",
+        "workspaceId": "[if(parameters('enableMonitoring'), resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '')]",
         "linuxConfiguration": {
             "disablePasswordAuthentication": true,
             "ssh": {
@@ -235,6 +250,64 @@
                 "autoUpgradeMinorVersion": true,
                 "settings": {}
             }
+        },
+        {
+            "condition": "[parameters('enableMonitoring')]",
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "apiVersion": "2021-06-01",
+            "name": "[parameters('workspaceName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "sku": {
+                    "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                    "enableLogAccessUsingOnlyResourcePermissions": true
+                }
+            }
+        },
+        {
+            "condition": "[parameters('enableMonitoring')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2021-03-01",
+            "name": "[concat(parameters('vmName'), '/OMSExtension')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.EnterpriseCloud.Monitoring",
+                "type": "OmsAgentForLinux",
+                "typeHandlerVersion": "1.13",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "workspaceId": "[if(parameters('enableMonitoring'), reference(variables('workspaceId'), '2021-06-01').customerId, '')]"
+                },
+                "protectedSettings": {
+                    "workspaceKey": "[if(parameters('enableMonitoring'), listKeys(variables('workspaceId'), '2021-06-01').primarySharedKey, '')]"
+                }
+            }
+        },
+        {
+            "condition": "[parameters('enableMonitoring')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2021-03-01",
+            "name": "[concat(parameters('vmName'), '/DependencyAgent')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', parameters('vmName'), 'OMSExtension')]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Azure.Monitoring.DependencyAgent",
+                "type": "DependencyAgentLinux",
+                "typeHandlerVersion": "9.10",
+                "autoUpgradeMinorVersion": true,
+                "settings": {},
+                "protectedSettings": {}
+            }
         }
     ],
     "outputs": {
@@ -253,6 +326,15 @@
         "entraIdSshCommand": {
             "type": "string",
             "value": "[concat('az ssh vm -n ', parameters('vmName'), ' -g ', resourceGroup().name)]"
+        },
+        "logAnalyticsWorkspace": {
+            "condition": "[parameters('enableMonitoring')]",
+            "type": "string",
+            "value": "[if(parameters('enableMonitoring'), parameters('workspaceName'), 'Monitoring not enabled')]"
+        },
+        "monitoringEnabled": {
+            "type": "bool",
+            "value": "[parameters('enableMonitoring')]"
         }
     }
 }

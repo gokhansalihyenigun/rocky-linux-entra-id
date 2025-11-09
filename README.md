@@ -13,6 +13,10 @@ Bu template, Microsoft Entra ID (eski adıyla Azure AD) ile SSH giriş yapabilec
 ✅ **Managed Identity** - Azure kaynaklarına güvenli erişim  
 ✅ **Premium SSD** - Yüksek performans disk  
 ✅ **Otomatik SSH Key** - Manuel key yönetimi yok  
+✅ **Azure Monitor & Log Analytics** - Kapsamlı monitoring ve logging  
+✅ **Performance Metrics** - CPU, Memory, Disk, Network izleme  
+✅ **Audit Logs** - Tüm SSH, sudo ve sistem aktiviteleri  
+✅ **Entra ID Integration** - RBAC tabanlı erişim kontrolü  
 
 ## Hızlı Başlangıç
 
@@ -41,6 +45,14 @@ az role assignment create \
 az ssh vm -n YOUR_VM_NAME -g YOUR_RESOURCE_GROUP
 ```
 
+### 3. Monitoring Kontrol Edin
+```bash
+# Azure Portal → Resource Group → Log Analytics Workspace
+# Veya Azure Portal → VM → Insights
+```
+
+📖 **Detaylı Monitoring Rehberi**: [MONITORING-GUIDE.md](./MONITORING-GUIDE.md)
+
 ## Parametreler
 
 | Parametre | Açıklama | Varsayılan |
@@ -50,6 +62,8 @@ az ssh vm -n YOUR_VM_NAME -g YOUR_RESOURCE_GROUP
 | `vmSize` | VM boyutu | `Standard_B2s` |
 | `authenticationType` | Kimlik doğrulama türü | `sshPublicKey` |
 | `adminPasswordOrKey` | SSH key veya şifre | *Required* |
+| `enableMonitoring` | Azure Monitor & Log Analytics | `true` |
+| `workspaceName` | Log Analytics workspace adı | `law-{vmName}` |
 
 ## VM Boyutları
 
@@ -123,12 +137,17 @@ az group delete --name YOUR_RESOURCE_GROUP --yes --no-wait
 - **Storage**: Premium_LRS (SSD)
 - **Network**: Standard Public IP (Static), Standard NSG
 - **Recommended Region**: Germany West Central
+- **Monitoring**: Azure Monitor Agent + Log Analytics + Dependency Agent
+- **Log Retention**: 30 days (configurable)
 
 ## Kaynaklar
 
 - [Microsoft Learn - Entra ID Linux VM Login](https://learn.microsoft.com/en-us/entra/identity/devices/howto-vm-sign-in-azure-ad-linux)
 - [Rocky Linux Resmi Dokümantasyonu](https://docs.rockylinux.org/)
 - [Azure VM Fiyatlandırması](https://azure.microsoft.com/pricing/details/virtual-machines/linux/)
+- [Azure Monitor Dokümantasyonu](https://learn.microsoft.com/en-us/azure/azure-monitor/)
+- [Monitoring Guide - MONITORING-GUIDE.md](./MONITORING-GUIDE.md)
+- [Troubleshooting - TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ## Katkıda Bulunma
 
