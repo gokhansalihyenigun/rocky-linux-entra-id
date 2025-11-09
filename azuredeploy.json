@@ -185,6 +185,11 @@
             "identity": {
                 "type": "SystemAssigned"
             },
+            "plan": {
+                "name": "9-base",
+                "publisher": "resf",
+                "product": "rockylinux-x86_64"
+            },
             "properties": {
                 "hardwareProfile": {
                     "vmSize": "[parameters('vmSize')]"
